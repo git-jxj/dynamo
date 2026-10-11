@@ -18,7 +18,6 @@ import (
 )
 
 func TestBuildDCGMEndpoint(t *testing.T) {
-	// Exercise the default host and custom paths for both address families.
 	for _, tc := range []struct {
 		name     string
 		podIP    string
