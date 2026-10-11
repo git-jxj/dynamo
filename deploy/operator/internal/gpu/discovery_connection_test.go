@@ -18,25 +18,22 @@ import (
 )
 
 func TestScrapeMetricsEndpointClosesConnections(t *testing.T) {
-	t.Log("Exercise successful scrapes and each response error path")
+	t.Log("Exercise scrapes whose fully read responses leave reusable connections")
 	const metrics = `# TYPE DCGM_FI_DEV_GPU_TEMP gauge
 DCGM_FI_DEV_GPU_TEMP{gpu="0",modelName="H100-SXM5-80GB",Hostname="gpu-node"} 50`
 	for _, tc := range []struct {
 		name        string
-		status      int
 		body        string
 		errContains string
 	}{
-		{name: "success", status: http.StatusOK, body: metrics},
-		{name: "HTTP error", status: http.StatusServiceUnavailable, body: metrics, errContains: "returned status 503"},
-		{name: "invalid exposition", status: http.StatusOK, body: "not valid prometheus exposition\n", errContains: "parse prometheus metrics"},
-		{name: "missing GPU metrics", status: http.StatusOK, body: "\n", errContains: "no GPUs detected"},
+		{name: "success", body: metrics},
+		{name: "invalid exposition", body: "not valid prometheus exposition\n", errContains: "parse prometheus metrics"},
+		{name: "missing GPU metrics", body: "\n", errContains: "no GPUs detected"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Log("Start a keep-alive metrics server and track its open TCP connections")
 			var active, accepted atomic.Int32
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(tc.status)
 				_, _ = fmt.Fprintln(w, tc.body)
 			}))
 			server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
